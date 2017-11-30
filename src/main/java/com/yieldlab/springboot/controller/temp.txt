@@ -1,3 +1,3 @@
-{"id":"1","bid":1200,"content":"a:$price$"}
+{"id":"1","bid":900,"content":"a:$price$"}
 {"id":"1","bid":300,"content":"b:$price$"}
 {"id":"1","bid":1000,"content":"c:$price$"}

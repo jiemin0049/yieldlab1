@@ -32,13 +32,6 @@ public class BiddingController {
 
   RestTemplate restTemplate = new RestTemplate();
 
-  /**
-   * Get a session with given session id.
-   * 
-   * @param id
-   *          session id.
-   * @return
-   */
   @RequestMapping(value = "/{id}", method = RequestMethod.GET)
   public ResponseEntity<String> getSession(@PathVariable("id") String id, HttpServletRequest request) {
     List<String> answerList = new ArrayList<>();
@@ -49,7 +42,7 @@ public class BiddingController {
       String value = entry.getValue()[0];
       String url = Constants.BIDDERS.get(bidder);
       if (!Strings.isNullOrEmpty(url)) {
-        String json = getRequestJson(id, bidder, value);
+        JSONObject json = getRequestJson(id, bidder, value);
         String answer = bidRequest(json, url);
         answerList.add(answer);
       }
@@ -66,32 +59,44 @@ public class BiddingController {
     return new ResponseEntity<String>(getWinBidder(answerList), HttpStatus.OK);
   }
 
-  private String getRequestJson(String id, String bidder, String value) {
-    return "{\"id\":\"" + id + "\" ,\"attributes\":{\"" + bidder + "\":\"" + value + "\"}}";
+  private JSONObject getRequestJson(String id, String bidder, String value) {
+    JSONObject request = new JSONObject();
+    request.put("id", id);
+    JSONObject attr = new JSONObject();
+    attr.put(bidder, value);
+    request.put("attributes", attr);
+    return request;
   }
 
-  private String bidRequest(String json, String url) {
+  private String bidRequest(JSONObject json, String url) {
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
-    HttpEntity<String> entity = new HttpEntity<String>(json, headers);
+    HttpEntity<String> entity = new HttpEntity<String>(json.toString(), headers);
     return restTemplate.postForObject(url, entity, String.class);
   }
 
   private String getWinBidder(List<String> answerList) {
-    int i = 0;
+    int higherPrice = 0;
     String winner = "";
     for (String answer : answerList) {
       JSONObject jsonObj = new JSONObject(answer);
-      int value = jsonObj.getInt("bid");
-      if (value > i) {
-        i = value;
+      int price = jsonObj.getInt("bid");
+      if (higherPrice < price) {
+        higherPrice = price;
         String content = jsonObj.getString("content");
-        winner = content.replace("$price$", value + "");
+        winner = content.replace("$price$", higherPrice + "");
       }
     }
     return winner;
   }
 
+  /**
+   * For dummy testing witout docker.
+   * 
+   * @param answerList
+   * @throws FileNotFoundException
+   * @throws IOException
+   */
   private void dummyRead(List<String> answerList) throws FileNotFoundException, IOException {
     File file = new File(getClass().getResource("temp.txt").getFile());
     try (BufferedReader br = new BufferedReader(new FileReader(file))) {
