@@ -1,11 +1,8 @@
 package com.yieldlab.springboot.controller;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -22,10 +19,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.common.base.Strings;
 import com.yieldlab.springboot.Constants;
+import com.yieldlab.springboot.model.Bidder;
 
 @RestController
 public class BiddingController {
@@ -34,77 +33,78 @@ public class BiddingController {
 
   @RequestMapping(value = "/{id}", method = RequestMethod.GET)
   public ResponseEntity<String> getSession(@PathVariable("id") String id, HttpServletRequest request) {
-    List<String> answerList = new ArrayList<>();
+    List<Bidder> bidderList = new ArrayList<>();
 
     Map<String, String[]> parameterMap = request.getParameterMap();
-    for (Entry<String, String[]> entry : parameterMap.entrySet()) {
-      String bidder = entry.getKey();
-      String value = entry.getValue()[0];
-      String url = Constants.BIDDERS.get(bidder);
-      if (!Strings.isNullOrEmpty(url)) {
-        JSONObject json = getRequestJson(id, bidder, value);
-        String answer = bidRequest(json, url);
-        answerList.add(answer);
+    JSONObject attrs = getAttributesJson(parameterMap);
+    JSONObject requestJson = new JSONObject();
+    requestJson.put("id", id);
+    requestJson.put("attributes", attrs);
+
+    for (Entry<String, String> entry : Constants.BIDDERS.entrySet()) {
+      String url = entry.getValue();
+      String answer = bidRequest(requestJson, url);
+      if (!Strings.isNullOrEmpty(answer)) {
+        Bidder bidder = convertToBidder(answer);
+        bidderList.add(bidder);
       }
     }
 
-//    try {
-//      dummyRead(answerList);
-//    } catch (FileNotFoundException e) {
-//      e.printStackTrace();
-//    } catch (IOException e) {
-//      e.printStackTrace();
-//    }
-
-    return new ResponseEntity<String>(getWinBidder(answerList), HttpStatus.OK);
+    return new ResponseEntity<String>(getWinBidder(bidderList), HttpStatus.OK);
   }
 
-  private JSONObject getRequestJson(String id, String bidder, String value) {
-    JSONObject request = new JSONObject();
-    request.put("id", id);
-    JSONObject attr = new JSONObject();
-    attr.put(bidder, value);
-    request.put("attributes", attr);
-    return request;
+  private JSONObject getAttributesJson(Map<String, String[]> parameterMap) {
+    JSONObject attributes = new JSONObject();
+    for (Entry<String, String[]> entry : parameterMap.entrySet()) {
+      String bidderName = entry.getKey();
+      String value = entry.getValue()[0];
+      attributes.put(bidderName, value);
+    }
+    return attributes;
   }
 
   private String bidRequest(JSONObject json, String url) {
+    String answer = "";
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
     HttpEntity<String> entity = new HttpEntity<String>(json.toString(), headers);
-    return restTemplate.postForObject(url, entity, String.class);
-  }
-
-  private String getWinBidder(List<String> answerList) {
-    int higherPrice = 0;
-    String winner = "";
-    for (String answer : answerList) {
-      JSONObject jsonObj = new JSONObject(answer);
-      int price = jsonObj.getInt("bid");
-      if (higherPrice < price) {
-        higherPrice = price;
-        String content = jsonObj.getString("content");
-        winner = content.replace("$price$", higherPrice + "");
-      }
+    try {
+      answer = restTemplate.postForObject(url, entity, String.class);
+    } catch (RestClientException e) {
+      // TODO: here should handle exception and write in log.
+      e.printStackTrace();
     }
-    return winner;
+    return answer;
   }
 
-  /**
-   * For dummy testing witout docker.
-   * 
-   * @param answerList
-   * @throws FileNotFoundException
-   * @throws IOException
-   */
-  private void dummyRead(List<String> answerList) throws FileNotFoundException, IOException {
-    File file = new File(getClass().getResource("temp.txt").getFile());
-    try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-      String line;
-      while ((line = br.readLine()) != null) {
-        answerList.add(line);
-      }
+  private Bidder convertToBidder(String bidResponse) {
+    JSONObject jsonObj = new JSONObject(bidResponse);
+    int bid = jsonObj.getInt("bid");
+    String content = jsonObj.getString("content");
+    return new Bidder(content, bid);
+
+  }
+
+  private String getWinBidder(List<Bidder> bidderList) {
+    if (bidderList.size() == 0) {
+      return "Error: no bidder found";
     }
-  }
 
+    Collections.sort(bidderList, new Comparator<Bidder>() {
+      @Override
+      public int compare(Bidder b1, Bidder b2) {
+        if (b1.getBid() != b2.getBid()) {
+          return b1.getBid() - b2.getBid();
+        } else {
+          return -(b1.getName().compareTo(b2.getName()));
+        }
+
+      }
+
+    });
+    // Get last element from list.
+    Bidder bidder = bidderList.get(bidderList.size() - 1);
+    return bidder.getName() + ":" + bidder.getBid();
+
+  }
 }

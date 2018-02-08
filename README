@@ -1,1 +1,11 @@
 Bidding system
+
+1. I use springboot to develop this recruiting-test-bidder.
+
+2. How to start:
+- start com.yieldlab.springboot.Applcation.java in Eclipse
+or
+- you can create a jar file from pom.xml, and run it using java -jar BiddingSystem.jar
+
+3. I don't use configuration for bidders and URLs, but only hardcode them in Constants.java
+   This can be optimized.

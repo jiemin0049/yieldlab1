@@ -1,11 +1,6 @@
 package com.yieldlab.springboot;
 
-import org.json.JSONObject;
 import org.junit.Test;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestTemplate;
 
 public class BiddingTest {
 
@@ -21,7 +16,6 @@ public class BiddingTest {
     JSONObject attr = new JSONObject();
     attr.put("a", "6");
     jsonObj.put("attributes", attr);
-
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
     
@@ -30,7 +24,6 @@ public class BiddingTest {
     RestTemplate restTemplate = new RestTemplate();
     String answer = restTemplate.postForObject(Constants.BIDDERS.get("a"), entity, String.class);
   }
-
   @Test
   public void bidderB() {
     JSONObject jsonObj = new JSONObject();
@@ -43,11 +36,9 @@ public class BiddingTest {
     headers.setContentType(MediaType.APPLICATION_JSON);
     
     HttpEntity<String> entity = new HttpEntity<String>(jsonObj.toString(), headers);
-
     RestTemplate restTemplate = new RestTemplate();
     String answer = restTemplate.postForObject(Constants.BIDDERS.get("b"), entity, String.class);
   }
-
   @Test
   public void bidderC() {
     JSONObject jsonObj = new JSONObject();
@@ -58,11 +49,11 @@ public class BiddingTest {
     
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
-
     HttpEntity<String> entity = new HttpEntity<String>(jsonObj.toString(), headers);
     
     RestTemplate restTemplate = new RestTemplate();
     String answer = restTemplate.postForObject(Constants.BIDDERS.get("c"), entity, String.class);
   }
   */
+
 }
